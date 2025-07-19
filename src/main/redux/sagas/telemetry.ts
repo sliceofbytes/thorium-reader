@@ -5,15 +5,23 @@
 // that can be found in the LICENSE file exposed on Github (readium) in the project repository.
 // ==LICENSE-END==
 
-import * as debug_ from "debug";
+// Make all the paths relative to the executable directory for portable builds.
+import * as fs from "fs";
+import * as path from "path";
+import { app } from "electron";
+const base = process.env.PORTABLE_EXECUTABLE_DIR ?? path.dirname(process.execPath);
+const dirs = { userData: "user_data", appData: "app_data", sessionData: "session_data", logs: "logs", temp: "temp" };
+for (const [k, sub] of Object.entries(dirs)) {
+    const dir = path.join(base, sub);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    app.setPath(k as any, dir);
+}
 
+import * as debug_ from "debug";
 import { _TELEMETRY_SECRET, _TELEMETRY_URL, _APP_VERSION } from "readium-desktop/preprocessor-directives";
 import { call as callTyped, select as selectTyped } from "typed-redux-saga/macro";
 import { RootState } from "../states";
 import { version as osVersion } from "os";
-import * as fs from "fs";
-import * as path from "path";
-import { app } from "electron";
 import { httpPost } from "readium-desktop/main/network/http";
 
 // TypeScript GO:

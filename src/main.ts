@@ -4,25 +4,18 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file exposed on Github (readium) in the project repository.
 // ==LICENSE-END==
+
+// Make all the paths relative to the executable directory for portable builds.
+import * as fs from "fs";
+import * as path from "path";
 import { app } from "electron";
-import path from "path";
-import fs from "fs";
-
-const base =
-    process.env.PORTABLE_EXECUTABLE_DIR ??
-    path.dirname(process.execPath);
-
-// Create directory structure
-for (const sub of ["user_data", "session_data", "logs", "temp"]) {
-    const d = path.join(base, sub);
-    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+const base = process.env.PORTABLE_EXECUTABLE_DIR ?? path.dirname(process.execPath);
+const dirs = { userData: "user_data", appData: "app_data", sessionData: "session_data", logs: "logs", temp: "temp" };
+for (const [k, sub] of Object.entries(dirs)) {
+    const dir = path.join(base, sub);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    app.setPath(k as any, dir);
 }
-
-// Override paths
-app.setPath("userData", path.join(base, "user_data"));
-app.setPath("sessionData", path.join(base, "session_data"));
-app.setPath("logs", path.join(base, "logs"));
-app.setPath("temp", path.join(base, "temp"));
 
 import * as debug_ from "debug";
 import { commandLineMainEntry } from "readium-desktop/main/cli";
