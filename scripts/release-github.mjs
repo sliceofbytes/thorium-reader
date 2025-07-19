@@ -201,8 +201,8 @@ const SAFE_DEBUG = false;
     const object = process.env.GITHUB_SHA;
     const type = "commit";
     const tagger = {
-        name: "Daniel Weck",
-        email: "daniel.weck@gmail.com",
+        name: "Eric S",
+        email: "sliceofbytes@gmail.com",
         date: new Date().toISOString(),
     };
 
@@ -351,7 +351,8 @@ const SAFE_DEBUG = false;
                         fullPath.endsWith(".exe") ||
                         fullPath.endsWith(".AppImage") ||
                         fullPath.endsWith(".deb") ||
-                        fullPath.endsWith(".dmg")
+                        fullPath.endsWith(".dmg") ||
+                        fullPath.endsWith(".zip")
                     ) {
                         yield fullPath;
                     }
@@ -363,6 +364,8 @@ const SAFE_DEBUG = false;
         let doneAPPIMAGE = false;
         let doneDEB = false;
         let doneDMG = false;
+        let doneWinZIP = false;
+        let doneLinuxZip = false;
         for await (const f of getFiles("release")) {
             if (f.endsWith(".exe")) {
                 if (doneEXE) {
@@ -390,6 +393,20 @@ const SAFE_DEBUG = false;
                     continue;
                 } else {
                     doneDMG = true;
+                }
+            }
+            if (f.endsWith("win.zip")) {
+                if (doneWinZIP) {
+                    continue;
+                } else {
+                    doneWinZIP = true;
+                }
+            }
+            if (f.endsWith("linux.zip")) {
+                if (doneLinuxZIP) {
+                    continue;
+                } else {
+                    doneLinuxZIP = true;
                 }
             }
             await upload(path.basename(f), f);

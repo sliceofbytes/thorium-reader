@@ -46,7 +46,7 @@
     "prepackage:build": "npm run clean",
     "package:build": "cross-env PACKAGING=1 npm run build:prod",
     "prepackage:win": "npm run package:build",
-    "package:win": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --publish never",
+    "package:win": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --publish never  && npm run package:win:portable",
     "package:win:installer": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis --x64 --publish never",
     "package:win:appx": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win appx --x64 --publish never",
     "package:win:portable": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64 --publish never && npm run zip:win:portable",
@@ -55,6 +55,7 @@
     "prepackage:linux": "npm run package:build",
     "package:linux": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux --x64 --publish never",
     "package:linux:deb": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux deb --x64 --publish never",
+    "package:linux:portable": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux portable --x64 --publish never && npm run zip:linux:portable",
     "package:linux:appimage": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux AppImage --x64 --publish never",
     "postpackage:linux": "(ls -alsR ./release/linux-arm64-unpacked/ || ls -alsR ./release/linux-unpacked/) && (npx @electron/fuses read --app ./release/linux-arm64-unpacked/thorium || npx @electron/fuses read --app ./release/linux-unpacked/thorium) || echo ok",
     "prepackage:mac": "npm run package:build",
@@ -97,11 +98,12 @@
     "typescript-check": "npm run patch-types && tsc --showConfig --project ./tsconfig-cli.json && echo \"####################\" && tsc --listFilesOnly --project ./tsconfig-cli.json && echo \"####################\" && tsc --project ./tsconfig-cli.json --extendedDiagnostics --diagnostics && npm run unpatch-types",
     "typescript-check-GO": "npm run patch-types && tsgo --showConfig --project ./tsconfig-cli.json && echo \"####################\" && tsgo --project ./tsconfig-cli.json --listFiles --extendedDiagnostics --diagnostics && npm run unpatch-types",
     "typescript-check-GO:watch": "npm run patch-types && concurrently \"tsgo --project ./tsconfig-cli.json --watch --excludeDirectories **/node_modules\" \"npm run unpatch-types\"",
-    "zip:win:portable": "zip-build \"release/win-unpacked\" \"release\" -t \"%NAME%Portable_%VERSION%.zip\""
+    "zip:win:portable": "zip-build \"release/win-unpacked\" \"release\" -t \"%NAME%Portable_%VERSION%_win.zip\"",
+    "zip:linux:portable": "zip-build \"release/linux-unpacked\" \"release\" -t \"%NAME%Portable_%VERSION%_linux.zip\""
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:edrlab/readium-desktop.git"
+    "url": "git@github.com:sliceofbytes/readium-desktop.git"
   },
   "author": {
     "name": "EDRLab",
