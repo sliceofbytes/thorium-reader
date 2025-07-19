@@ -226,6 +226,19 @@ jobs:
       if: ${{ github.event_name != 'pull_request' && endsWith(matrix.osarch, '-intel') }}
       run: >
         node -e 'const path = require("path"); const fs = require("fs"); const filePath = path.join(process.cwd(), "package.json"); let fileStr = fs.readFileSync(filePath, { encoding: "utf8" }); fileStr = fileStr.replace(/--arm64/g, "--x64"); fs.writeFileSync(filePath, fileStr, { encoding: "utf8" });' && npm run package:${{ matrix.packname }}
+
+    - name: Zip Windows Portable Build
+      if: ${{ matrix.osarch == 'windows-intel' && github.event_name != 'pull_request' }}
+      run: npm run zip-portable
+
+    - name: Upload Portable Build to GitHub Release
+      if: ${{ matrix.osarch == 'windows-intel' && github.event_name != 'pull_request' }}
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/ThoriumReaderPortable_*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_RELEASE_PUBLISH }}
+
     #- run: ls -alsR release
     #- run: npm install @octokit/rest
     - name: GitHub Tagged Release Delete/ReCreate and Upload Build Artefacts
