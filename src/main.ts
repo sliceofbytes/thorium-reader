@@ -4,9 +4,27 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file exposed on Github (readium) in the project repository.
 // ==LICENSE-END==
+import { app } from "electron";
+import path from "path";
+import fs from "fs";
+
+const base =
+    process.env.PORTABLE_EXECUTABLE_DIR ??
+    path.dirname(process.execPath);
+
+// Create directory structure
+for (const sub of ["user_data", "session_data", "logs", "temp"]) {
+    const d = path.join(base, sub);
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+}
+
+// Override paths
+app.setPath("userData", path.join(base, "user_data"));
+app.setPath("sessionData", path.join(base, "session_data"));
+app.setPath("logs", path.join(base, "logs"));
+app.setPath("temp", path.join(base, "temp"));
 
 import * as debug_ from "debug";
-import * as path from "path";
 import { commandLineMainEntry } from "readium-desktop/main/cli";
 
 import { setLcpNativePluginPath } from "@r2-lcp-js/parser/epub/lcp";
