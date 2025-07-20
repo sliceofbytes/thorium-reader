@@ -24,6 +24,7 @@ if (isPortable) {
     }
 }
 
+
 import * as debug_ from "debug";
 import { commandLineMainEntry } from "readium-desktop/main/cli";
 
