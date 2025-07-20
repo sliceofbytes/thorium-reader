@@ -45,17 +45,17 @@
     "vscode:launch:hot": "cross-env DEBUG=r2:*,readium-desktop:*,-proxy-agent,-readium-desktop:main#streamerNoHttp,-readium-desktop:main:saga:persist,-r2:navigator#electron/common/readium-css-inject NODE_ENV=development VSCODE_LAUNCH=true npm run build:dev:main && cross-env SKIP_CHECK_TYPESCRIPT=1 DEBUG_COLORS=true npm run start:dev:renderer:pdf",
     "prepackage:build": "npm run clean",
     "package:build": "cross-env PACKAGING=1 npm run build:prod",
+    "package:portable": "npm run prepackage:build && npm run prepackage:win && npm run package:win:portable && npm run package:linux:portable",
     "prepackage:win": "npm run package:build",
     "package:win": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --publish never  && npm run package:win:portable",
     "package:win:installer": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis --x64 --publish never",
     "package:win:appx": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win appx --x64 --publish never",
     "package:win:portable": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64 --publish never && npm run zip:win:portable",
-    "package:win:zip": "",
     "postpackage:win": "npx @electron/fuses read --app ./release/win-unpacked/thorium.exe || echo ok",
     "prepackage:linux": "npm run package:build",
-    "package:linux": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux --x64 --publish never",
+    "package:linux": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux --x64 --publish never && npm run package:linux:portable",
     "package:linux:deb": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux deb --x64 --publish never",
-    "package:linux:portable": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux portable --x64 --publish never && npm run zip:linux:portable",
+    "package:linux:portable": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux dir --x64 --publish never && npm run zip:linux:portable",
     "package:linux:appimage": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux AppImage --x64 --publish never",
     "postpackage:linux": "(ls -alsR ./release/linux-arm64-unpacked/ || ls -alsR ./release/linux-unpacked/) && (npx @electron/fuses read --app ./release/linux-arm64-unpacked/thorium || npx @electron/fuses read --app ./release/linux-unpacked/thorium) || echo ok",
     "prepackage:mac": "npm run package:build",
@@ -66,15 +66,27 @@
     "prerelease": "npm run clean && echo \"Starting complete release build process...\"",
     "release": "npm run release:build && npm run release:package:all && npm run release:verify",
     "release:build": "echo \"Building production assets...\" && npm run package:build",
-    "release:package:all": "echo \"Packaging all platforms...\" && concurrently --max-processes 1 \"npm run release:package:windows\" \"npm run release:package:linux\" \"npm run release:package:mac\"",
+    "release:package:all": "echo \"Packaging all platforms...\" && npm run release:package:windows && npm run release:package:linux && npm run release:package:mac",
     "release:package:windows": "echo \"Packaging Windows builds...\" && npm run package:win:installer && npm run package:win:appx && npm run package:win:portable",
     "release:package:windows:portable": "echo \"Packaging Windows Portable Build...\" && npm run package:win:portable",
-    "release:package:linux": "echo \"Packaging Linux builds...\" && npm run package:linux:deb && npm run package:linux:appimage",
+    "release:package:linux": "echo \"Packaging Linux builds...\" && npm run package:linux:deb && npm run package:linux:appimage && npm run package:linux:portable",
     "release:package:mac": "echo \"Packaging macOS builds...\" && npm run package:mac:dmg",
     "release:verify": "npm run release:list-artifacts && npm run release:check-signatures",
-    "release:list-artifacts": "echo \"\\n=== RELEASE ARTIFACTS ===\" && find ./release -name \"*.exe\" -o -name \"*.dmg\" -o -name \"*.deb\" -o -name \"*.AppImage\" -o -name \"*.appx\" | sort",
+    "release:list-artifacts": "echo \"\\n=== RELEASE ARTIFACTS ===\" && find ./release -name \"*.exe\" -o -name \"*.dmg\" -o -name \"*.deb\" -o -name \"*.AppImage\" -o -name \"*.appx\" -o -name \"*.zip\" | sort",
     "release:check-signatures": "echo \"\\n=== CHECKING SIGNATURES ===\" && npm run postpackage:win && npm run postpackage:linux && npm run postpackage:mac",
     "release:quick": "npm run clean && npm run release:build && npm run release:package:all",
+    "release:all": "npm run prerelease && npm run release:build && npm run release:package:all-parallel && npm run release:package:zips && npm run release:verify && npm run release:summary",
+    "release:package:all-parallel": "echo \"Packaging all platforms in parallel...\" && concurrently --max-processes 3 \"npm run release:package:windows\" \"npm run release:package:linux\" \"npm run release:package:mac\"",
+    "release:package:zips": "echo \"Creating zip packages for portable releases...\" && npm run zip:all:portable",
+    "release:summary": "echo \"\\n=== RELEASE COMPLETE ===\" && npm run release:list-artifacts && echo \"\\nAll release artifacts are ready in ./release/\"",
+    "zip:all:portable": "npm run zip:ensure:portable:dirs && npm run zip:win:portable && npm run zip:linux:portable",
+    "zip:ensure:portable:dirs": "echo \"Ensuring portable directories exist...\"",
+    "zip:win:portable": "zip-build \"release/win-unpacked\" \"release\" -t \"%NAME%Portable_%VERSION%_win.zip\"",
+    "zip:linux:portable": "zip-build \"release/linux-unpacked\" \"release\" -t \"%NAME%Portable_%VERSION%_linux.zip\"",
+    "release:windows:only": "npm run prerelease && npm run release:build && npm run release:package:windows && npm run release:verify",
+    "release:linux:only": "npm run prerelease && npm run release:build && npm run release:package:linux && npm run release:verify",
+    "release:mac:only": "npm run prerelease && npm run release:build && npm run release:package:mac && npm run release:verify",
+    "release:portable:only": "npm run prerelease && npm run release:build && npm run package:win:portable && npm run package:linux:portable && npm run release:verify",
     "cli:help": "electron . --help",
     "cli": "cross-env DEBUG=r2:*,readium-desktop:*,-proxy-agent,-readium-desktop:main#streamerNoHttp,-readium-desktop:main:saga:persist,-r2:navigator#electron/common/readium-css-inject NODE_ENV=development electron --remote-debugging-port=9223 --remote-allow-origins=\"*\" .",
     "i18n-sort": "node ./scripts/locales-sort.js",
@@ -97,9 +109,7 @@
     "unpatch-types": "",
     "typescript-check": "npm run patch-types && tsc --showConfig --project ./tsconfig-cli.json && echo \"####################\" && tsc --listFilesOnly --project ./tsconfig-cli.json && echo \"####################\" && tsc --project ./tsconfig-cli.json --extendedDiagnostics --diagnostics && npm run unpatch-types",
     "typescript-check-GO": "npm run patch-types && tsgo --showConfig --project ./tsconfig-cli.json && echo \"####################\" && tsgo --project ./tsconfig-cli.json --listFiles --extendedDiagnostics --diagnostics && npm run unpatch-types",
-    "typescript-check-GO:watch": "npm run patch-types && concurrently \"tsgo --project ./tsconfig-cli.json --watch --excludeDirectories **/node_modules\" \"npm run unpatch-types\"",
-    "zip:win:portable": "zip-build \"release/win-unpacked\" \"release\" -t \"%NAME%Portable_%VERSION%_win.zip\"",
-    "zip:linux:portable": "zip-build \"release/linux-unpacked\" \"release\" -t \"%NAME%Portable_%VERSION%_linux.zip\""
+    "typescript-check-GO:watch": "npm run patch-types && concurrently \"tsgo --project ./tsconfig-cli.json --watch --excludeDirectories **/node_modules\" \"npm run unpatch-types\""
   },
   "repository": {
     "type": "git",
@@ -246,6 +256,9 @@
       ],
       "icon": "dist/assets/icons/icon.ico"
     },
+    "portable": {
+      "artifactName": "${productName}Portable_${version}_${os}_${arch}.${ext}"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
@@ -258,6 +271,7 @@
     "linux": {
       "target": [
         "deb",
+        "dir",
         "AppImage"
       ],
       "desktop": {
@@ -281,7 +295,8 @@
     "appx": {
       "displayName": "Thorium Reader",
       "publisher": "CN=C91F86A8-45E6-48E0-8015-8A5BF2B38BD4"
-    }
+    },
+    "publish": null
   },
   "dependencies": {
     "@github/paste-markdown": "^1.5.3",
@@ -357,6 +372,7 @@
     "use-sync-external-store": "^1.5.0",
     "uuid": "^11.1.0",
     "validator": "^13.15.15",
+    "ws": "^8.18.3",
     "yargs": "^18.0.0",
     "yauzl": "^3.2.0",
     "yazl": "^3.3.1"

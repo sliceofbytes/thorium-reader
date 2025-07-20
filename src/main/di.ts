@@ -9,12 +9,19 @@
 import * as fs from "fs";
 import * as path from "path";
 import { app } from "electron";
-const base = process.env.PORTABLE_EXECUTABLE_DIR ?? path.dirname(process.execPath);
-const dirs = { userData: "user_data", appData: "app_data", sessionData: "session_data", logs: "logs", temp: "temp" };
-for (const [k, sub] of Object.entries(dirs)) {
-    const dir = path.join(base, sub);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    app.setPath(k as any, dir);
+const base = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
+const isPortable =
+    !!process.env.PORTABLE_EXECUTABLE_DIR ||
+    fs.existsSync(path.join(base, "THORIUM_PORTABLE")) ||
+    process.env.THORIUM_PORTABLE === "1" ||
+    process.argv.includes("--portable");
+if (isPortable) {
+    const dirs = { userData: "user_data", appData: "app_data", sessionData: "session_data", logs: "logs", temp: "temp" };
+    for (const [k, sub] of Object.entries(dirs)) {
+        const dir = path.join(base, sub);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        app.setPath(k as any, dir);
+    }
 }
 
 import "reflect-metadata";
