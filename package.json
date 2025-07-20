@@ -43,8 +43,13 @@
     "vscode:launch:attach:electron": "electron --enable-logging --remote-debugging-port=9223 --inspect=25575 --nolazy .",
     "vscode:launch:attach": "npm run vscode:launch:hot && cross-env SKIP_CHECK_TYPESCRIPT=1 DEBUG_COLORS=true concurrently --kill-others \"npm run start:dev:renderer:library\" \"npm run start:dev:renderer:reader\" \"npm run vscode:launch:attach:electron\"",
     "vscode:launch:hot": "cross-env DEBUG=r2:*,readium-desktop:*,-proxy-agent,-readium-desktop:main#streamerNoHttp,-readium-desktop:main:saga:persist,-r2:navigator#electron/common/readium-css-inject NODE_ENV=development VSCODE_LAUNCH=true npm run build:dev:main && cross-env SKIP_CHECK_TYPESCRIPT=1 DEBUG_COLORS=true npm run start:dev:renderer:pdf",
+
     "prepackage:build": "npm run clean",
     "package:build": "cross-env PACKAGING=1 npm run build:prod",
+    "prepackage:win:portable": "npm run prepackage:build && npm run package:build",
+    "prepackage:linux:portable": "npm run prepackage:build && npm run package:build",
+    "prepackage:mac:skip-notarize": "npm run prepackage:build && npm run package:build",
+
     "package:portable": "npm run prepackage:build && npm run prepackage:win && npm run package:win:portable && npm run package:linux:portable",
     "prepackage:win": "npm run package:build",
     "package:win": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --publish never  && npm run package:win:portable",
