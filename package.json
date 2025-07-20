@@ -46,9 +46,9 @@
 
     "prepackage:build": "npm run clean",
     "package:build": "cross-env PACKAGING=1 npm run build:prod",
-    "prepackage:win:portable": "npm run prepackage:build && npm run package:build",
-    "prepackage:linux:portable": "npm run prepackage:build && npm run package:build",
-    "prepackage:mac:skip-notarize": "npm run prepackage:build && npm run package:build",
+    "package:win:portable": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --publish never",
+    "package:linux:portable": "cross-env DEBUG=* CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux dir --publish never && npm run zip:linux:portable",
+    "package:mac:skip-notarize": "cross-env SKIP_NOTARIZE=1 DEBUG=* electron-builder --mac --publish never",
 
     "package:portable": "npm run prepackage:build && npm run prepackage:win && npm run package:win:portable && npm run package:linux:portable",
     "prepackage:win": "npm run package:build",

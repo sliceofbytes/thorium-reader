@@ -143,12 +143,9 @@ jobs:
       run: npm run build:prod
     - name: Build and Package (all non-PR)
       if: ${{ github.event_name != 'pull_request' }}
+      env:
+        TARGET_ARCH: ${{ matrix.arch }}
       run: |
-        if [ "${{ matrix.arch }}" = "arm64" ]; then
-          node -e 'const path = require("path"); const fs = require("fs"); const filePath = path.join(process.cwd(), "package.json"); let fileStr = fs.readFileSync(filePath, { encoding: "utf8" }); fileStr = fileStr.replace(/--x64/g, "--arm64"); fs.writeFileSync(filePath, fileStr, { encoding: "utf8" });'
-        else
-          node -e 'const path = require("path"); const fs = require("fs"); const filePath = path.join(process.cwd(), "package.json"); let fileStr = fs.readFileSync(filePath, { encoding: "utf8" }); fileStr = fileStr.replace(/--arm64/g, "--x64"); fs.writeFileSync(filePath, fileStr, { encoding: "utf8" });'
-        fi
         npm run ${{ matrix.packscript }}
       shell: bash
     - name: List release dir
