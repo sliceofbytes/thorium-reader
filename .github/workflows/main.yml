@@ -35,31 +35,43 @@ jobs:
             packscript: package:win:portable
             arch: x64
             release_tag: latest-windows-intel
+            artifact_pattern: "*.zip"
+            artifact_dir: "win-unpacked"
           - osarch: windows-arm
             runson: windows-latest
             packscript: package:win:portable
             arch: arm64
             release_tag: latest-windows-arm
+            artifact_pattern: "*.zip"
+            artifact_dir: "win-unpacked"
           - osarch: macos-intel
             runson: macos-latest
             packscript: package:mac:skip-notarize
             arch: x64
             release_tag: latest-macos-intel
+            artifact_pattern: "*.dmg"
+            artifact_dir: "mac"
           - osarch: macos-arm
             runson: macos-latest
             packscript: package:mac:skip-notarize
             arch: arm64
             release_tag: latest-macos-arm
+            artifact_pattern: "*.dmg"
+            artifact_dir: "mac-arm64"
           - osarch: linux-intel
             runson: ubuntu-22.04
             packscript: package:linux:portable
             arch: x64
             release_tag: latest-linux-intel
+            artifact_pattern: "*.zip"
+            artifact_dir: "linux-unpacked"
           - osarch: linux-arm
             runson: ubuntu-22.04
             packscript: package:linux:portable
             arch: arm64
             release_tag: latest-linux-arm
+            artifact_pattern: "*.zip"
+            artifact_dir: "linux-arm64-unpacked"
     env:
       RELEASE_TAG: ${{ matrix.release_tag }}
     steps:
@@ -148,8 +160,66 @@ jobs:
       run: |
         npm run ${{ matrix.packscript }}
       shell: bash
-    - name: List release dir
-      run: ls -al release || dir release
+    
+    # Create zip files for portable releases
+    - name: Create Windows Portable ZIP
+      if: ${{ github.event_name != 'pull_request' && startsWith(matrix.osarch, 'windows-') }}
+      run: |
+        cd release
+        if [ -d "win-unpacked" ]; then
+          7z a -tzip "ThoriumPortable_${{ github.run_id }}_${{ matrix.osarch }}.zip" "win-unpacked/*"
+        fi
+      shell: bash
+    
+    - name: Create Linux Portable ZIP
+      if: ${{ github.event_name != 'pull_request' && startsWith(matrix.osarch, 'linux-') }}
+      run: |
+        cd release
+        if [ -d "linux-unpacked" ]; then
+          zip -r "ThoriumPortable_${{ github.run_id }}_${{ matrix.osarch }}.zip" "linux-unpacked/"
+        elif [ -d "linux-arm64-unpacked" ]; then
+          zip -r "ThoriumPortable_${{ github.run_id }}_${{ matrix.osarch }}.zip" "linux-arm64-unpacked/"
+        fi
+      shell: bash
+    
+    # List what was actually created
+    - name: List release directory contents
+      if: ${{ github.event_name != 'pull_request' }}
+      run: |
+        echo "=== Release directory contents ==="
+        ls -la release/ || dir release
+        echo "=== Subdirectories ==="
+        find release/ -type d 2>/dev/null || echo "find not available"
+        echo "=== All files ==="
+        find release/ -type f 2>/dev/null || echo "find not available"
+      shell: bash
+    
+    # Verify artifacts exist before upload
+    - name: Verify artifacts exist
+      if: ${{ github.event_name != 'pull_request' }}
+      run: |
+        echo "Checking for artifacts..."
+        if [ "${{ matrix.osarch }}" = "macos-intel" ] || [ "${{ matrix.osarch }}" = "macos-arm" ]; then
+          if ls release/*.dmg 1> /dev/null 2>&1; then
+            echo "✓ DMG files found"
+            ls -la release/*.dmg
+          else
+            echo "✗ No DMG files found"
+            exit 1
+          fi
+        else
+          if ls release/*.zip 1> /dev/null 2>&1; then
+            echo "✓ ZIP files found"
+            ls -la release/*.zip
+          else
+            echo "✗ No ZIP files found"
+            echo "Available files:"
+            ls -la release/
+            exit 1
+          fi
+        fi
+      shell: bash
+    
     - name: GitHub Tagged Release Delete/ReCreate and Upload Build Artefacts
       if: ${{ github.event_name != 'pull_request' }}
       run: node scripts/release-github.mjs
