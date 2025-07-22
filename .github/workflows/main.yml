@@ -15,6 +15,7 @@ jobs:
   build:
     if: "!contains(github.event.head_commit.message, 'skip ci')"
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -87,6 +88,7 @@ jobs:
     
     - name: Create portable archive (Linux only)
       if: github.event_name == 'push' && matrix.platform == 'linux'
+      shell: bash
       run: |
         cd release
         if [ -d "linux-unpacked" ]; then
@@ -97,9 +99,10 @@ jobs:
     
     - name: List artifacts
       if: github.event_name == 'push'
+      shell: bash
       run: |
         echo "Built artifacts:"
-        ls -la release/
+        ls -la release/ || dir release
     
     - name: Upload artifacts
       if: github.event_name == 'push'
