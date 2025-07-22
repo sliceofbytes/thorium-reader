@@ -1,225 +1,126 @@
-name: CI
+name: Build and Release
 on:
   push:
     branches: [ develop ]
-    tags-ignore:
-      - '*'
   pull_request:
     branches: [ develop ]
+
 permissions:
-    actions: none
-    checks: none
-    contents: write
-    deployments: none
-    id-token: none
-    issues: none
-    packages: none
-    pages: none
-    pull-requests: none
-    repository-projects: none
-    security-events: none
-    statuses: none
+  contents: write
+
 env:
-  GITHUB_TOKEN_RELEASE_PUBLISH: ${{ secrets.GITHUB_TOKEN }}
-  USE_HARD_LINKS: 'false'
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   build:
-    if: "github.event_name == 'pull_request' || !contains(github.event.head_commit.message, 'skip ci')"
-    runs-on: ${{ matrix.runson }}
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
     strategy:
-      fail-fast: false
       matrix:
         include:
-          - osarch: windows-intel
-            runson: windows-latest
-            packscript: package:win:portable
+          - os: windows-latest
+            platform: win
             arch: x64
-            release_tag: latest-windows-intel
-            artifact_pattern: "*.zip"
-            artifact_dir: "win-unpacked"
-          - osarch: windows-arm
-            runson: windows-latest
-            packscript: package:win:portable
+            script: pack:win
+            artifact: "release/*.zip"
+          - os: windows-latest
+            platform: win
             arch: arm64
-            release_tag: latest-windows-arm
-            artifact_pattern: "*.zip"
-            artifact_dir: "win-unpacked"
-          - osarch: macos-intel
-            runson: macos-latest
-            packscript: package:mac:skip-notarize
+            script: pack:win
+            artifact: "release/*.zip"
+          - os: macos-latest
+            platform: mac
             arch: x64
-            release_tag: latest-macos-intel
-            artifact_pattern: "*.dmg"
-            artifact_dir: "mac"
-          - osarch: macos-arm
-            runson: macos-latest
-            packscript: package:mac:skip-notarize
+            script: pack:mac
+            artifact: "release/*.dmg"
+          - os: macos-latest
+            platform: mac
             arch: arm64
-            release_tag: latest-macos-arm
-            artifact_pattern: "*.dmg"
-            artifact_dir: "mac-arm64"
-          - osarch: linux-intel
-            runson: ubuntu-22.04
-            packscript: package:linux:portable
+            script: pack:mac
+            artifact: "release/*.dmg"
+          - os: ubuntu-latest
+            platform: linux
             arch: x64
-            release_tag: latest-linux-intel
-            artifact_pattern: "*.zip"
-            artifact_dir: "linux-unpacked"
-          - osarch: linux-arm
-            runson: ubuntu-22.04
-            packscript: package:linux:portable
+            script: pack:linux
+            artifact: "release/*.zip"
+          - os: ubuntu-latest
+            platform: linux
             arch: arm64
-            release_tag: latest-linux-arm
-            artifact_pattern: "*.zip"
-            artifact_dir: "linux-arm64-unpacked"
-    env:
-      RELEASE_TAG: ${{ matrix.release_tag }}
+            script: pack:linux
+            artifact: "release/*.zip"
+    
+    runs-on: ${{ matrix.os }}
+    
     steps:
-    - run: pwdx || echo OK || true
-      shell: cmd
-      continue-on-error: true
-    - name: Microsoft Windows dumpbin to PATH
-      if: startsWith(matrix.osarch, 'windows-')
-      run: >
-        $VS_ROOT = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"; $VS_VERSION = (Get-ChildItem -Path $VS_ROOT | Sort-Object Name -Descending | Select-Object -First 1).Name; $VS_BIN = "$VS_ROOT\$VS_VERSION\bin\Hostx64\x64"; echo $VS_BIN >> $env:GITHUB_PATH; echo $VS_BIN
-      shell: powershell
-    - name: Microsoft Windows dumpbin check
-      if: startsWith(matrix.osarch, 'windows-')
-      run: >
-        dumpbin /headers "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\dumpbin.exe" | findstr /i machine
-      shell: cmd
-    - run: echo 'RELEASE_TAG:' ${{ env.RELEASE_TAG }}
-    - run: 'echo "GITHUB_RUN_NUMBER: ${{ github.run_number }}"'
-    - run: 'echo "GITHUB_RUN_ID: ${{ github.run_id }}"'
-    - run: 'echo "GITHUB_SHA: ${{ github.sha }}"'
-    - run: echo "${{ matrix.osarch }} // ${{ runner.arch }}"
-    - name: System arch (non Windows)
-      if: ${{ !startsWith(matrix.osarch, 'windows-') }}
-      run: uname -m && arch
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Git config global dump (post)
-      run: 'git config --global --list || echo NO_GIT_GLOBAL_CONFIG || true'
-      shell: bash
-    - name: Git config local dump (post)
-      run: 'git config --list || echo NO_GIT_GLOBAL_CONFIG || true'
-      shell: bash
-    - uses: actions/setup-node@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
         node-version: '22'
-    - run: node --version && npm --version
-    - run: npm --global install npm@^11
-    - run: npm --version
-    - run: python --version || echo ok || true
-    - run: python3 --version || echo ok || true
-    - run: pip --version || echo ok || true
-    - run: python3 -m pip install setuptools || python -m pip install setuptools
-    - name: package patch 1
-      run: node scripts/package-ci-patch.js package.json ${{ github.run_id }} && cat package.json | grep -i VERSION && cat package.json
-      shell: bash
-    - name: package patch 2
-      run: node scripts/package-ci-patch.js src/package.json ${{ github.run_id }} && cat src/package.json | grep -i VERSION && cat src/package.json
-      shell: bash
-    - name: package lock patch
-      run: node scripts/package-lock-patch.js && cat package-lock.json | grep -i divina-player-js
-      shell: bash
-    - run: git --no-pager diff
-    - run: npm cache clean --force
-    - run: npm cache verify
-    - run: cat package-lock.json | grep -i divina-player-js
-    - name: NPM install (arm64)
-      if: endsWith(matrix.osarch, '-arm')
-      run: npm ci --foreground-scripts --arch=arm64 --cpu=arm64
-    - name: NPM install (x64)
-      if: endsWith(matrix.osarch, '-intel')
-      run: npm ci --foreground-scripts --arch=x64 --cpu=x64
-    - name: Electron version + arch (Windows)
-      if: startsWith(matrix.osarch, 'windows-')
-      run: >
-        (dumpbin /headers "node_modules\electron\dist\electron.exe" | findstr /i machine) && (node_modules\\electron\\dist\\electron.exe --no-sandbox --version || echo INVALID_ARCH || true) && (node_modules\\electron\\dist\\electron.exe --no-sandbox --abi || echo INVALID_ARCH || true)
-      shell: cmd
-      continue-on-error: true
-    - name: Electron version + arch (Linux)
-      if: startsWith(matrix.osarch, 'linux-')
-      run: >
-        (file node_modules/electron/dist/electron) && (node_modules/electron/dist/electron --no-sandbox --version || echo INVALID_ARCH || true) && (node_modules/electron/dist/electron --no-sandbox --abi || echo INVALID_ARCH || true)
-    - name: Electron version + arch (MacOS)
-      if: startsWith(matrix.osarch, 'macos-')
-      run: >
-        (file node_modules/electron/dist/Electron.app/Contents/MacOS/Electron) && (node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --no-sandbox --version || echo INVALID_ARCH || true) && (node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --no-sandbox --abi || echo INVALID_ARCH || true)
-    - run: npm list -g node-gyp || echo ok || true
-    - run: npm list node-gyp || echo ok || true
-      continue-on-error: true
-    - name: PR action (just build)
-      if: ${{ github.event_name == 'pull_request' }}
-      run: npm run build:prod
-    - name: Build and Package (all non-PR)
-      if: ${{ github.event_name != 'pull_request' }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci --arch=${{ matrix.arch }}
+    
+    - name: Run tests (PR only)
+      if: github.event_name == 'pull_request'
+      run: npm test
+    
+    - name: Build (PR only)
+      if: github.event_name == 'pull_request'
+      run: npm run build
+    
+    - name: Package for release (Push only)
+      if: github.event_name == 'push'
       env:
         TARGET_ARCH: ${{ matrix.arch }}
-      run: |
-        npm run ${{ matrix.packscript }}
-      shell: bash
+      run: npm run ${{ matrix.script }}
     
-    # Create zip files for portable releases
-    - name: Create Windows Portable ZIP
-      if: ${{ github.event_name != 'pull_request' && startsWith(matrix.osarch, 'windows-') }}
-      run: |
-        cd release
-        if [ -d "win-unpacked" ]; then
-          7z a -tzip "ThoriumPortable_${{ github.run_id }}_${{ matrix.osarch }}.zip" "win-unpacked/*"
-        fi
-      shell: bash
-    
-    - name: Create Linux Portable ZIP
-      if: ${{ github.event_name != 'pull_request' && startsWith(matrix.osarch, 'linux-') }}
+    - name: Create portable archive (Linux only)
+      if: github.event_name == 'push' && matrix.platform == 'linux'
       run: |
         cd release
         if [ -d "linux-unpacked" ]; then
-          zip -r "ThoriumPortable_${{ github.run_id }}_${{ matrix.osarch }}.zip" "linux-unpacked/"
+          zip -r "Thorium-${{ matrix.arch }}-linux-portable.zip" linux-unpacked/
         elif [ -d "linux-arm64-unpacked" ]; then
-          zip -r "ThoriumPortable_${{ github.run_id }}_${{ matrix.osarch }}.zip" "linux-arm64-unpacked/"
+          zip -r "Thorium-${{ matrix.arch }}-linux-portable.zip" linux-arm64-unpacked/
         fi
-      shell: bash
     
-    # List what was actually created
-    - name: List release directory contents
-      if: ${{ github.event_name != 'pull_request' }}
+    - name: List artifacts
+      if: github.event_name == 'push'
       run: |
-        echo "=== Release directory contents ==="
-        ls -la release/ || dir release
-        echo "=== Subdirectories ==="
-        find release/ -type d 2>/dev/null || echo "find not available"
-        echo "=== All files ==="
-        find release/ -type f 2>/dev/null || echo "find not available"
-      shell: bash
+        echo "Built artifacts:"
+        ls -la release/
     
-    # Verify artifacts exist before upload
-    - name: Verify artifacts exist
-      if: ${{ github.event_name != 'pull_request' }}
-      run: |
-        echo "Checking for artifacts..."
-        if [ "${{ matrix.osarch }}" = "macos-intel" ] || [ "${{ matrix.osarch }}" = "macos-arm" ]; then
-          if ls release/*.dmg 1> /dev/null 2>&1; then
-            echo "✓ DMG files found"
-            ls -la release/*.dmg
-          else
-            echo "✗ No DMG files found"
-            exit 1
-          fi
-        else
-          if ls release/*.zip 1> /dev/null 2>&1; then
-            echo "✓ ZIP files found"
-            ls -la release/*.zip
-          else
-            echo "✗ No ZIP files found"
-            echo "Available files:"
-            ls -la release/
-            exit 1
-          fi
-        fi
-      shell: bash
+    - name: Upload artifacts
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: thorium-${{ matrix.platform }}-${{ matrix.arch }}
+        path: ${{ matrix.artifact }}
+        retention-days: 30
+  
+  release:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
     
-    - name: GitHub Tagged Release Delete/ReCreate and Upload Build Artefacts
-      if: ${{ github.event_name != 'pull_request' }}
-      run: node scripts/release-github.mjs
+    - name: Display structure
+      run: ls -R artifacts
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: build-${{ github.run_number }}
+        name: "Build ${{ github.run_number }}"
+        draft: false
+        prerelease: true
+        files: artifacts/**/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
