@@ -22,12 +22,12 @@ jobs:
             platform: win
             arch: x64
             script: pack:win
-            artifact: "release/*.zip"
+            artifact: "release/*"
           - os: windows-latest
             platform: win
             arch: arm64
             script: pack:win
-            artifact: "release/*.zip"
+            artifact: "release/*"
           - os: macos-latest
             platform: mac
             arch: x64
@@ -85,6 +85,16 @@ jobs:
       env:
         TARGET_ARCH: ${{ matrix.arch }}
       run: npm run ${{ matrix.script }}
+    
+    - name: Create portable archive (Windows)
+      if: github.event_name == 'push' && matrix.platform == 'win'
+      shell: bash
+      run: |
+        cd release
+        if [ -d "win-unpacked" ]; then
+          # Use 7z on Windows for better compression and compatibility
+          7z a -tzip "Thorium-${{ matrix.arch }}-windows-portable.zip" "win-unpacked/*"
+        fi
     
     - name: Create portable archive (Linux only)
       if: github.event_name == 'push' && matrix.platform == 'linux'
